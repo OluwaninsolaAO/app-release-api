@@ -1,0 +1,55 @@
+name: Build and Distribute Major Version
+
+on:
+    [workflow_dispatch]
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+        - name: Checkout repository
+          uses: actions/checkoutv4
+        
+        - name: Set up Git
+          run: |
+            git config user.name "github-actions"
+            git config user.email "github-actions@github.com"
+        
+        - name: Read and bump patch version
+          id: bump_version
+          run: |
+            VERSION=$(cat VERSION)
+            echo "Current version: $VERSION"
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+            MAJOR=$((MAJOR + 1))
+            NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+            echo "New version: $NEW_VERSION"
+            echo "$NEW_VERSION" > VERSION
+            echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+        
+        - name: Commit updated version
+          run: |
+            git add VERSION
+            git commit -m "Bump version to ${{ steps.bump_version.outputs.version }}"
+            git tag v${{ steps.bump_version.outputs.version }}
+            git push origin main --follow-tags
+          
+        - name: Build Docker Image
+          run: docker build . --file Dockerfile --tag app-release-api:${{ steps.bump_version.outputs.version }}
+
+        - name: Publish Image to Docker Hub
+          run: |
+            TARGET_IMAGE=app-release-api:${{ steps.bump_version.outputs.version }}
+            OUT_IMAGE=${{ vars.DOCKER_HUB_USERNAME }}/app-release-api:${{ steps.bump_version.outputs.version }}
+            docker tag $TARGET_IMAGE $OUT_IMAGE
+            docker login --username ${{ vars.DOCKER_HUB_USERNAME }} --password ${{ secrets.DOCKER_HUB_PASSWORD }}
+            docker push $OUT_IMAGE
+
+        - name: Publish Image to Github Package Registry
+          run: |
+            TARGET_IMAGE=app-release-api:${{ steps.bump_version.outputs.version }}
+            OUT_IMAGE=ghcr.io/${{vars.GIT_NAMESPACE}}/app-release-api:${{ steps.bump_version.outputs.version }}
+            docker tag $TARGET_IMAGE $OUT_IMAGE
+            docker login ghcr.io --username ${{vars.GIT_NAMESPACE}} --password ${{secrets.GIT_PASSWORD}}
+            docker push $OUT_IMAGE
