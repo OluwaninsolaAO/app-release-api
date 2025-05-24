@@ -1,15 +1,23 @@
 import { parse } from 'json5';
-import { AppReleaseABS } from './common/base';
-import HTTPClient from './common/http';
-import { appRelease, AppRelease } from './common/types';
+import { AppReleaseABS } from './utils/base';
+import HTTPClient from './http';
+import { appRelease, AppRelease } from './utils/types';
+import { defaultLogger } from './logger';
 
 export default class Android implements AppReleaseABS {
-  private readonly http = new HTTPClient('https://play.google.com/store/apps');
+  constructor(
+    private readonly logger = defaultLogger.child({
+      service: 'app-release-android-service',
+    }),
+    private readonly http = new HTTPClient(
+      'https://play.google.com/store/apps',
+    ),
+  ) {}
 
   async getRelease(id: string): Promise<AppRelease | null> {
     const response = await this.http.get({
       path: '/details',
-      query: { id },
+      query: { id, hl: 'en' },
     });
     const html = await response.text();
     const results = html.matchAll(
@@ -30,11 +38,11 @@ export default class Android implements AppReleaseABS {
           iconUrl: data['data'][1][2][95][0][3][2] as string,
           storeUrl: response.url,
           developerName: data['data'][1][2][37][0],
-          userRatingAverage: data['data'][1][2][51][0][1],
-          userRatingCount: data['data'][1][2][51][2][1],
+          userRatingAverage: data['data'][1][2][51]?.[0]?.[1] ?? 0,
+          userRatingCount: data['data'][1][2][51]?.[2]?.[1] ?? 0,
         };
       } catch {
-        console.log(`Skipping over -- ${match.index}`);
+        this.logger.info(`Skipping over -- ${match.index}`);
       }
     }
     if (appData) {

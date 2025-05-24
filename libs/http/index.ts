@@ -1,11 +1,12 @@
 import { HTTPMethods, HTTPReadRequest, HTTPWriteRequest } from './types';
 
 export default class HTTPClient {
-  private readonly baseUrl: string;
   private readonly initHeaders: Record<string, any>;
 
-  constructor(baseUrl: string, headers: Record<string, any> = {}) {
-    this.baseUrl = baseUrl;
+  constructor(
+    private readonly baseUrl: string,
+    headers: Record<string, any> = {},
+  ) {
     this.initHeaders = {
       // JSON biased
       'Content-Type': 'application/json',
@@ -35,12 +36,16 @@ export default class HTTPClient {
       // Object biased
       params.body = Object.fromEntries(params.body.entries());
     }
-    const response = await fetch(url, {
-      method: method,
-      headers: headers,
-      body: JSON.stringify(params.body),
-    });
-    return response;
+    try {
+      const response = await fetch(url, {
+        method: method,
+        headers: headers,
+        body: JSON.stringify(params.body),
+      });
+      return response;
+    } catch {
+      throw new Error('Network request failed');
+    }
   }
 
   get(params: HTTPReadRequest) {

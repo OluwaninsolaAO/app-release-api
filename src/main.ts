@@ -3,8 +3,8 @@ import { AppModule } from './app.module';
 import { env } from 'env.schema';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
-import { InternalErrorExceptionFilter } from 'libs/exceptions/internal-error-exception.filter';
-import { TransformInterceptor } from 'libs/interceptors/transform.interceptor';
+import { InternalErrorExceptionFilter } from 'common/filters/internal-error-exception.filter';
+import { TransformInterceptor } from 'common/interceptors/transform.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);

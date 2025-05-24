@@ -1,7 +1,8 @@
-import { AppReleaseABS } from './common/base';
-import HTTPClient from './common/http';
-import { appRelease } from './common/types';
-import type { AppRelease } from './common/types';
+import { AppReleaseABS } from './utils/base';
+import HTTPClient from './http';
+import { appRelease } from './utils/types';
+import type { AppRelease } from './utils/types';
+import { defaultLogger } from './logger';
 
 type ApiResponse = {
   resultCount: number;
@@ -9,7 +10,12 @@ type ApiResponse = {
 };
 
 export default class iOS implements AppReleaseABS {
-  private readonly http = new HTTPClient('https://itunes.apple.com');
+  constructor(
+    private readonly logger = defaultLogger.child({
+      service: 'app-release-ios-service',
+    }),
+    private readonly http = new HTTPClient('https://itunes.apple.com'),
+  ) {}
   async getRelease(bundleId: string): Promise<AppRelease | null> {
     const response = await this.http.get({
       path: '/lookup',
@@ -18,7 +24,7 @@ export default class iOS implements AppReleaseABS {
     });
     if (!response.ok) {
       throw new Error(
-        `Error fetching App version: Status Code - ${response.status}`,
+        `Error fetching App Release: Status Code - ${response.status}`,
       );
     }
     const data = (await response.json()) as ApiResponse;
